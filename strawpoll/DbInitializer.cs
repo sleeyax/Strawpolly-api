@@ -20,8 +20,8 @@ namespace strawpoll
             if (context.Members.Any()) return;
             
             context.Members.AddRange(
-                new Member {email = "jeff@gmail.com", firstName = "Jeff", lastName = "Vermeulen"}, 
-                new Member {email = "kevin.vlaey@hotmail.comw", firstName = "Kevin", lastName = "Vlaeyemans"}
+                new Member {Email = "jeff@gmail.com", FirstName = "Jeff", LastName = "Vermeulen"}, 
+                new Member {Email = "kevin.vlaey@hotmail.comw", FirstName = "Kevin", LastName = "Vlaeyemans"}
                 
                 );
             context.SaveChanges();
