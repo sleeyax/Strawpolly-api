@@ -15,9 +15,9 @@ namespace strawpoll.Services
         private readonly AppSettings _appSettings;
         private readonly DatabaseContext _databaseContext;
 
-        public MemberService(IOptions<AppSettings> appSettings, DatabaseContext dbContext)
+        public MemberService(IOptions<AppSettings> appSettingsOptions, DatabaseContext dbContext)
         {
-            _appSettings = appSettings.Value;
+            _appSettings = appSettingsOptions.Value;
             _databaseContext = dbContext;
         }
 
@@ -26,28 +26,33 @@ namespace strawpoll.Services
             var member = _databaseContext.Members.SingleOrDefault(x => x.Email == email && x.Password == password);
 
             if (member == null)  return null;
-           
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_appSettings.JwtSecret);
 
-            var tokenDescriptor = new SecurityTokenDescriptor()
+            member.Token = CreateJwt(member);
+            member.Password = null;
+
+            return member;
+        }
+
+        private string CreateJwt(Member member, int daysUntilExpiration = 7)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            byte[] key = Encoding.ASCII.GetBytes(_appSettings.JwtSecret);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
             {
-                Subject = new ClaimsIdentity(new Claim[]
+                Subject = new ClaimsIdentity(new[]
                 {
                     new Claim("MemberID", member.MemberID.ToString()),
                     new Claim("Email", member.Email),
-                    new Claim("FirstName", member.FirstName), 
+                    new Claim("FirstName", member.FirstName),
                 }),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddDays(daysUntilExpiration),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
             };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
-            member.Token = tokenHandler.WriteToken(token);
 
-            member.Password = null;
-
-            return member;
+            return tokenHandler.WriteToken(token);
         }
     }
 }
