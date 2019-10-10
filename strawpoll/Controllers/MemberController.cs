@@ -2,10 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using strawpoll.Models;
+using strawpoll.Services;
 
 namespace strawpoll.Controllers
 {
@@ -14,13 +16,16 @@ namespace strawpoll.Controllers
     public class MemberController : ControllerBase
     {
         private readonly DatabaseContext _context;
+        private readonly IMemberService _memberService;
 
-        public MemberController(DatabaseContext context)
+        public MemberController(DatabaseContext context, IMemberService memberService)
         {
             _context = context;
+            _memberService = memberService;
         }
 
         // GET: api/members
+        [Authorize]
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Member>>> GetMembers()
         {
@@ -28,6 +33,7 @@ namespace strawpoll.Controllers
         }
 
         // GET: api/members/5
+        [Authorize]
         [HttpGet("{id}")]
         public async Task<ActionResult<Member>> GetMember(long id)
         {
@@ -42,6 +48,7 @@ namespace strawpoll.Controllers
         }
 
         // PUT: api/members/5
+        [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMember(long id, Member member)
         {
@@ -81,7 +88,20 @@ namespace strawpoll.Controllers
             return CreatedAtAction("GetMember", new { id = member.MemberID }, member);
         }
 
+        // POST: api/members/authenticate
+        [HttpPost("authenticate")]
+        public async Task<ActionResult<Member>> AuthenticateMember([FromBody] Member member)
+        {
+            var authenticatedMember = _memberService.Authenticate(member.Email, member.Password);
+
+            if (authenticatedMember == null)
+                return BadRequest(new {message = "Invalid username or password!"});
+
+            return Ok(authenticatedMember);
+        }
+
         // DELETE: api/members/5
+        [Authorize]
         [HttpDelete("{id}")]
         public async Task<ActionResult<Member>> DeleteMember(long id)
         {
