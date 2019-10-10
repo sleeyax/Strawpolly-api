@@ -14,6 +14,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json;
 using strawpoll.Config;
 using strawpoll.Models;
 using strawpoll.Services;
@@ -37,7 +38,12 @@ namespace strawpoll
                 {
                     builder.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
                 }));
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+            services.AddMvc()
+                .SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
+                .AddJsonOptions(options => {
+                    
+                    options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
+                }); 
             var appSettingsSection = Configuration.GetSection("AppSettings");
             services.Configure<AppSettings>(appSettingsSection);
             // configure jwt
