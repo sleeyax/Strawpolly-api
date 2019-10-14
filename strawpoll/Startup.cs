@@ -40,8 +40,9 @@ namespace strawpoll
                 }));
             services.AddMvc()
                 .SetCompatibilityVersion(CompatibilityVersion.Version_2_2)
-                .AddJsonOptions(options => {
-                    
+                .AddJsonOptions(options =>
+                {
+                    options.SerializerSettings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
                     options.SerializerSettings.NullValueHandling = NullValueHandling.Ignore;
                 }); 
             var appSettingsSection = Configuration.GetSection("AppSettings");
