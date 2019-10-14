@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.AspNetCore.Mvc.ModelBinding;
@@ -17,5 +18,7 @@ namespace strawpoll.Models
         // NotMapped = field will not be stored as a column in the DB
         [NotMapped]
         public string Token { get; set; }
+
+        public List<Poll> Polls { get; set; }
     }
 }
