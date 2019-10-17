@@ -13,24 +13,9 @@ namespace strawpoll.Controllers
 {
     [Route("api/polls")]
     [ApiController]
-    public class PollController : ControllerBase
+    public class PollController : AuthController
     {
-        private readonly DatabaseContext _context;
-
-        public PollController(DatabaseContext context)
-        {
-            _context = context;
-        }
-
-        /// <summary>
-        /// Returns the member that's currently authenticated with the API
-        /// </summary>
-        /// <returns></returns>
-        private Member GetAuthenticatedMember()
-        {
-            string memberId = User.Claims.FirstOrDefault(c => c.Type == "MemberID")?.Value;
-            return _context.Members.FirstOrDefault(m => m.MemberID.ToString() == memberId);
-        }
+        public PollController(DatabaseContext context) : base(context) { }
 
         // Returns all polls the current user has created
         // GET: api/polls
