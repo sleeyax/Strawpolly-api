@@ -9,6 +9,8 @@ namespace strawpoll.Models
         public DbSet<PollAnswer> PollAnswers { get; set; }
         public DbSet<PollParticipant> PollParticipants { get; set; }
         public DbSet<PollVote> PollVotes { get; set; }
+        public DbSet<Friend> Friends { get; set; }
+
 
         public DatabaseContext(DbContextOptions<DatabaseContext> options) : base(options) {}
 
@@ -19,6 +21,7 @@ namespace strawpoll.Models
             builder.Entity<PollAnswer>().ToTable("PollAnswers");
             builder.Entity<PollParticipant>().ToTable("PollParticipants");
             builder.Entity<PollVote>().ToTable("PollVotes");
+            builder.Entity<Friend>().ToTable("Friends");
         }
 
     }
