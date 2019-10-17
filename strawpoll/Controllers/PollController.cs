@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using strawpoll.Api.Requests;
 using strawpoll.Models;
 
 namespace strawpoll.Controllers
@@ -25,7 +26,7 @@ namespace strawpoll.Controllers
         /// Returns the member that's currently authenticated with the API
         /// </summary>
         /// <returns></returns>
-        private Member getCurrentMember()
+        private Member GetAuthenticatedMember()
         {
             string memberId = User.Claims.FirstOrDefault(c => c.Type == "MemberID")?.Value;
             return _context.Members.FirstOrDefault(m => m.MemberID.ToString() == memberId);
@@ -35,9 +36,9 @@ namespace strawpoll.Controllers
         // GET: api/polls
         [Authorize]
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Poll>>> GetPolls()
+        public async Task<IEnumerable<Poll>> GetMemberPolls()
         {
-            Member member = getCurrentMember();
+            Member member = GetAuthenticatedMember();
 
             return await _context.Polls
                 .Where(p => p.Creator == member)
@@ -50,9 +51,11 @@ namespace strawpoll.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Poll>> GetPoll(long id)
         {
-            Member member = getCurrentMember();
+            Member member = GetAuthenticatedMember();
 
-            var poll = _context.Polls.FirstOrDefault(p => p.Creator == member && p.PollID == id);
+            var poll = _context.Polls
+                .Include(p => p.Answers)
+                .FirstOrDefault(p => p.Creator == member && p.PollID == id);
 
             if (poll == null)
                 return NotFound();
@@ -64,12 +67,22 @@ namespace strawpoll.Controllers
         // PUT: api/polls/5
         [Authorize]
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutPoll(long id, Poll poll)
+        public async Task<IActionResult> PutPoll(long id, PollRequest request)
         {
-            if (id != poll.PollID)
-            {
-                return BadRequest();
-            }
+            if (id != request.PollID)
+                return BadRequest( id + " " + request.PollID);
+
+            Member member = GetAuthenticatedMember();
+
+            Poll poll = _context.Polls
+                .Where(p => p.Creator.MemberID == member.MemberID)
+                .Include(p => p.Answers)
+                .FirstOrDefault(p => p.PollID == request.PollID);
+
+            if (poll == null) return NotFound();
+
+            poll.Answers = request.Answers.Select(a => new PollAnswer() {Answer = a.Answer}).ToList();
+            poll.Name = request.Name;
 
             _context.Entry(poll).State = EntityState.Modified;
 
@@ -89,21 +102,29 @@ namespace strawpoll.Controllers
                 }
             }
 
-            return NoContent();
+            return Ok(poll);
         }
 
         // POST: api/polls
         [Authorize]
         [HttpPost]
-        public async Task<JsonResult> PostPoll(Poll poll)
+        public async Task<ActionResult> PostPoll(PollRequest request)
         {
-            Member member = getCurrentMember();
-            poll.Creator = member;
+            Member member = GetAuthenticatedMember();
+
+            Poll poll = new Poll
+            {
+                Creator = member,
+                Answers = request.Answers
+                    .Select(a => new PollAnswer{Answer = a.Answer})
+                    .ToList(),
+                Name = request.Name
+            };
 
             _context.Polls.Add(poll);
             await _context.SaveChangesAsync();
 
-            return new JsonResult(new JsonResponse(Status.SUCCESS, "Poll created successfully"));
+            return CreatedAtAction("GetPoll", new { id = poll.PollID }, poll);
         }
 
         // DELETE: api/poll/5
@@ -111,11 +132,15 @@ namespace strawpoll.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<Poll>> DeletePoll(long id)
         {
+            Member member = GetAuthenticatedMember();
+
             var poll = await _context.Polls.FindAsync(id);
             if (poll == null)
-            {
                 return NotFound();
-            }
+
+            // check if the member is allowed to delete this poll
+            if (member.MemberID != poll.Creator.MemberID)
+                return Unauthorized();
 
             _context.Polls.Remove(poll);
             await _context.SaveChangesAsync();

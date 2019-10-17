@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using strawpoll.Api.Requests;
 using strawpoll.Models;
 using strawpoll.Services;
 
@@ -80,8 +81,16 @@ namespace strawpoll.Controllers
 
         // POST: api/members
         [HttpPost]
-        public async Task<ActionResult<Member>> PostMember(Member member)
+        public async Task<ActionResult<Member>> PostMember(RegisterRequest request)
         {
+            Member member = new Member
+            {
+                Email = request.Email,
+                FirstName = request.FirstName,
+                LastName = request.LastName,
+                Password = request.Password
+            };
+
             _context.Members.Add(member);
             await _context.SaveChangesAsync();
 
@@ -90,9 +99,9 @@ namespace strawpoll.Controllers
 
         // POST: api/members/authenticate
         [HttpPost("authenticate")]
-        public async Task<ActionResult<Member>> AuthenticateMember([FromBody] Member member)
+        public async Task<ActionResult<Member>> AuthenticateMember([FromBody] LoginRequest request)
         {
-            var authenticatedMember = _memberService.Authenticate(member.Email, member.Password);
+            var authenticatedMember = _memberService.Authenticate(request.Email, request.Password);
 
             if (authenticatedMember == null)
                 return BadRequest(new {message = "Invalid username or password!"});

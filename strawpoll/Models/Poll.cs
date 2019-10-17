@@ -8,7 +8,7 @@ namespace strawpoll.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public long PollID { get; private set; }
+        public long PollID { get; set; }
         public string Name { get; set; }
 
         // creator of the Poll
