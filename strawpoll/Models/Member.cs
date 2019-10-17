@@ -20,5 +20,6 @@ namespace strawpoll.Models
         public string Token { get; set; }
 
         public List<Poll> Polls { get; set; }
+        public List<Friend> Friends { get; set; }
     }
 }
