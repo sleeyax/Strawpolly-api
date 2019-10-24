@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using strawpoll.Api.Requests;
+using strawpoll.Api.Responses;
 using strawpoll.Models;
 
 namespace strawpoll.Controllers
@@ -14,13 +17,70 @@ namespace strawpoll.Controllers
     [ApiController]
     public class FriendController : AuthController
     {
+
+        /* TODO: keep track of the user who last updated the FriendStatus.
+           For example, how do we know which user blocked another user?
+           We have to know this because only one user can 'lift' the block.
+           -> Use the MemberWhoModified property (from model Friend) we added last time!
+        */
+
         public FriendController(DatabaseContext context) : base(context) { }
 
         // GET: api/friends
+        // Returns a list of this Member friends
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Friend>>> GetFriends()
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<FriendResponse>>> GetFriends()
         {
-            return await _context.Friends.ToListAsync();
+            Member member = GetAuthenticatedMember();
+            return await _context.Friends
+                .Where(f => f.MemberID == member.MemberID || (f.MemberFriendID == member.MemberID && f.FriendStatus != FriendStatus.Pending))
+                .Include(m => m.MemberFriend)
+                .Include(m => m.Member)
+                .Select(f => ToFriendResponse(f, member))
+            .ToListAsync();
+        }
+
+        private FriendResponse ToFriendResponse(Friend f, Member m)
+        {
+            Member member = new Member();
+            if (f.MemberID == m.MemberID)
+            {
+                member.Email = f.MemberFriend.Email;
+                member.FirstName = f.MemberFriend.FirstName;
+                member.LastName = f.MemberFriend.LastName;
+            }
+            else if (f.MemberFriendID == m.MemberID)
+            {
+                member.Email = f.Member.Email;
+                member.FirstName = f.Member.FirstName;
+                member.LastName = f.Member.LastName;
+            }
+            else
+            {
+                throw new Exception("This should not happen");
+            }
+
+            return new FriendResponse
+            {
+                Friend = member,
+                FriendID = f.FriendID,
+                FriendStatus = f.FriendStatus
+            };
+        }
+
+        // GET: api/friends/requests
+        // Returns a list of members that have sent the current user a friend request
+        [HttpGet("requests")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<FriendResponse>>> GetFriendRequests()
+        {
+            Member member = GetAuthenticatedMember();
+            return await _context.Friends
+                .Where(f => f.MemberFriendID == member.MemberID && f.FriendStatus == FriendStatus.Pending)
+                .Include(f => f.Member)
+                .Select(f => ToFriendResponse(f, member))
+                .ToListAsync();
         }
 
         // GET: api/friends/5
@@ -38,13 +98,20 @@ namespace strawpoll.Controllers
         }
 
         // PUT: api/friends/5
+        // update friend status (accept, decline, ...) for incoming FR
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutFriend(long id, Friend friend)
+        public async Task<IActionResult> PutFriend(long id, FriendStatusUpdateRequest request)
         {
-            if (id != friend.FriendID)
-            {
+            if (id != request.FriendID)
                 return BadRequest();
-            }
+
+            Member member = GetAuthenticatedMember();
+
+            Friend friend = await _context.Friends.FindAsync(id);
+            if (friend.MemberFriendID != member.MemberID)
+                return NotFound(friend.MemberFriendID + " " + member.MemberID);
+
+            friend.FriendStatus = request.FriendStatus;
 
             _context.Entry(friend).State = EntityState.Modified;
 
@@ -103,11 +170,13 @@ namespace strawpoll.Controllers
         [HttpDelete("{id}")]
         public async Task<ActionResult<Friend>> DeleteFriend(long id)
         {
-            var friend = await _context.Friends.FindAsync(id);
+            Friend friend = await _context.Friends.FindAsync(id);
             if (friend == null)
-            {
                 return NotFound();
-            }
+
+            Member member = GetAuthenticatedMember();
+            if (friend.MemberID != member.MemberID && friend.MemberFriendID != member.MemberID)
+                return BadRequest();
 
             _context.Friends.Remove(friend);
             await _context.SaveChangesAsync();
