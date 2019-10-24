@@ -21,5 +21,7 @@ namespace strawpoll.Models
 
         public List<Poll> Polls { get; set; }
         public List<Friend> Friends { get; set; }
+        // navigation property of Friend.MemberWhoModified
+        public List<Friend> FriendsModified { get; set; }
     }
 }
