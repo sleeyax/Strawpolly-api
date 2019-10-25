@@ -17,13 +17,6 @@ namespace strawpoll.Controllers
     [ApiController]
     public class FriendController : AuthController
     {
-
-        /* TODO: keep track of the user who last updated the FriendStatus.
-           For example, how do we know which user blocked another user?
-           We have to know this because only one user can 'lift' the block.
-           -> Use the MemberWhoModified property (from model Friend) we added last time!
-        */
-
         public FriendController(DatabaseContext context) : base(context) { }
 
         // GET: api/friends
@@ -34,36 +27,53 @@ namespace strawpoll.Controllers
         {
             Member member = GetAuthenticatedMember();
             return await _context.Friends
-                .Where(f => f.MemberID == member.MemberID || (f.MemberFriendID == member.MemberID && f.FriendStatus != FriendStatus.Pending))
+                .Where(f => HasFriendsModPermissions(f, member))
                 .Include(m => m.MemberFriend)
                 .Include(m => m.Member)
                 .Select(f => ToFriendResponse(f, member))
             .ToListAsync();
         }
 
+        private bool HasFriendsModPermissions(Friend f, Member m)
+        {
+            // the user who modified the FriendStatus should always have the option to undo the change, or change it to something else again.
+            // Example: member A blocks member B. Member B can't see member A in his friend list, but member A should still have the option to undo the block.
+
+            // member A
+            if (f.MemberWhoModifiedID == m.MemberID) return true;
+
+            // member B
+            if (f.MemberWhoModifiedID != m.MemberID)
+            {
+                switch (f.FriendStatus)
+                {
+                    case FriendStatus.Blocked:
+                    case FriendStatus.Declined:
+                    // NOTE: pending is added here because the api/friends/requests endpoint will be used to handle pending FRs
+                    case FriendStatus.Pending:
+                        return false;
+                    // case FriendStatus.Accepted:
+                    default:
+                        return true;
+                }
+            }
+
+            // no friends
+            return false;
+        }
+
         private FriendResponse ToFriendResponse(Friend f, Member m)
         {
-            Member member = new Member();
-            if (f.MemberID == m.MemberID)
-            {
-                member.Email = f.MemberFriend.Email;
-                member.FirstName = f.MemberFriend.FirstName;
-                member.LastName = f.MemberFriend.LastName;
-            }
-            else if (f.MemberFriendID == m.MemberID)
-            {
-                member.Email = f.Member.Email;
-                member.FirstName = f.Member.FirstName;
-                member.LastName = f.Member.LastName;
-            }
-            else
-            {
-                throw new Exception("This should not happen");
-            }
+            Member friend = f.MemberID == m.MemberID ? f.MemberFriend : f.Member;
 
             return new FriendResponse
             {
-                Friend = member,
+                Friend = new Member
+                {
+                    Email = friend.Email,
+                    FirstName = friend.FirstName,
+                    LastName = friend.LastName
+                },
                 FriendID = f.FriendID,
                 FriendStatus = f.FriendStatus
             };
@@ -108,10 +118,11 @@ namespace strawpoll.Controllers
             Member member = GetAuthenticatedMember();
 
             Friend friend = await _context.Friends.FindAsync(id);
-            if (friend.MemberFriendID != member.MemberID)
-                return NotFound(friend.MemberFriendID + " " + member.MemberID);
+            if (friend.MemberID != member.MemberID && friend.MemberFriendID != member.MemberID)
+                return NotFound();
 
             friend.FriendStatus = request.FriendStatus;
+            friend.MemberWhoModifiedID = member.MemberID;
 
             _context.Entry(friend).State = EntityState.Modified;
 
@@ -121,20 +132,17 @@ namespace strawpoll.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!FriendExists(id))
-                {
+                if (!_context.Friends.Any(e => e.FriendID == id))
                     return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                
+                throw;
             }
 
             return NoContent();
         }
 
         // POST: api/friends
+        // sends a new friend request
         [HttpPost]
         public async Task<ActionResult<Friend>> PostFriend(FriendRequest request)
         {
@@ -151,13 +159,15 @@ namespace strawpoll.Controllers
                     // TODO: send invitation email
                     break;
                 }
-                // friend exists, insert pending friend request into db
-                _context.Friends.Add(new Friend
-                {
-                    MemberID = member.MemberID,
-                    MemberFriendID = friend.MemberID,
-                    FriendStatus = FriendStatus.Pending
-                });
+                // insert pending friend request into db if they are not friends yet
+                if (!await AreFriends(member, friend))
+                    _context.Friends.Add(new Friend
+                    {
+                        MemberID = member.MemberID,
+                        MemberFriendID = friend.MemberID,
+                        MemberWhoModifiedID = member.MemberID,
+                        FriendStatus = FriendStatus.Pending
+                    });
             }
 
             await _context.SaveChangesAsync();
@@ -167,6 +177,7 @@ namespace strawpoll.Controllers
         }
 
         // DELETE: api/friends/5
+        // remove friend
         [HttpDelete("{id}")]
         public async Task<ActionResult<Friend>> DeleteFriend(long id)
         {
@@ -184,9 +195,11 @@ namespace strawpoll.Controllers
             return friend;
         }
 
-        private bool FriendExists(long id)
+        private async Task<bool> AreFriends(Member member, Member friend)
         {
-            return _context.Friends.Any(e => e.FriendID == id);
+            return await _context.Friends.AnyAsync(f => 
+                f.MemberID == member.MemberID && f.MemberFriendID == friend.MemberID || 
+                f.MemberID == friend.MemberID && f.MemberFriendID == member.MemberID);
         }
     }
 }
