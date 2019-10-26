@@ -10,7 +10,7 @@ namespace strawpoll.Models
     {
         [Key]
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public long MemberID { get; private set; }
+        public long MemberID { get; set; }
         public string FirstName { get; set; }
         public string LastName { get; set; }
         public string Email { get; set; }

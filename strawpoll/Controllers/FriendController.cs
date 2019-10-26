@@ -70,6 +70,7 @@ namespace strawpoll.Controllers
             {
                 Friend = new Member
                 {
+                    MemberID = friend.MemberID,
                     Email = friend.Email,
                     FirstName = friend.FirstName,
                     LastName = friend.LastName
