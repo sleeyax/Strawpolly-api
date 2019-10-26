@@ -20,14 +20,14 @@ namespace strawpoll.Controllers
         public FriendController(DatabaseContext context) : base(context) { }
 
         // GET: api/friends
-        // Returns a list of this Member friends
+        // Returns a list of this Member friends (incl. all FriendStatuses)
         [HttpGet]
         [Authorize]
         public async Task<ActionResult<IEnumerable<FriendResponse>>> GetFriends()
         {
             Member member = GetAuthenticatedMember();
             return await _context.Friends
-                .Where(f => HasModPermissions(f, member))
+                .Where(f => (f.MemberID == member.MemberID || f.MemberFriendID == member.MemberID) && HasModPermissions(f, member))
                 .Include(m => m.MemberFriend)
                 .Include(m => m.Member)
                 .Select(f => ToFriendResponse(f, member))
@@ -89,6 +89,20 @@ namespace strawpoll.Controllers
             return await _context.Friends
                 .Where(f => f.MemberFriendID == member.MemberID && f.FriendStatus == FriendStatus.Pending)
                 .Include(f => f.Member)
+                .Select(f => ToFriendResponse(f, member))
+                .ToListAsync();
+        }
+
+        // GET: api/friends/accepted
+        [HttpGet("accepted")]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<FriendResponse>>> GetAcceptedFriendRequests()
+        {
+            Member member = GetAuthenticatedMember();
+            return await _context.Friends
+                .Where(f => (f.MemberID == member.MemberID || f.MemberFriendID == member.MemberID) && f.FriendStatus == FriendStatus.Accepted)
+                .Include(f => f.Member)
+                .Include(f => f.MemberFriend)
                 .Select(f => ToFriendResponse(f, member))
                 .ToListAsync();
         }
@@ -157,7 +171,7 @@ namespace strawpoll.Controllers
                     break;
                 }
                 // insert pending friend request into db if they are not friends yet
-                if (!await AreFriends(member, friend))
+                if (!AreFriends(member, friend))
                     _context.Friends.Add(new Friend
                     {
                         MemberID = member.MemberID,
@@ -192,9 +206,9 @@ namespace strawpoll.Controllers
             return friend;
         }
 
-        private async Task<bool> AreFriends(Member member, Member friend)
+        private bool AreFriends(Member member, Member friend)
         {
-            return await _context.Friends.AnyAsync(f => 
+            return _context.Friends.Any(f => 
                 f.MemberID == member.MemberID && f.MemberFriendID == friend.MemberID || 
                 f.MemberID == friend.MemberID && f.MemberFriendID == member.MemberID);
         }
