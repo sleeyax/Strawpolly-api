@@ -103,7 +103,8 @@ namespace strawpoll.Controllers
                 Answers = request.Answers
                     .Select(a => new PollAnswer{Answer = a.Answer})
                     .ToList(),
-                Name = request.Name
+                Name = request.Name,
+                Participants = request.participantIds.Select(id => new PollParticipant {MemberID = id}).ToList()
             };
 
             _context.Polls.Add(poll);

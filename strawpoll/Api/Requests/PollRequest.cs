@@ -12,6 +12,9 @@ namespace strawpoll.Api.Requests
     {
         public long PollID { get; set; }
         public string Name { get; set; }
+        // TODO: just use a list of strings here
         public List<AnswerRequest> Answers { get; set; }
+        // IDs of members that can participate in this poll
+        public int[] participantIds { get; set; }
     }
 }
