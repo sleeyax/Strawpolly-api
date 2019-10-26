@@ -27,14 +27,14 @@ namespace strawpoll.Controllers
         {
             Member member = GetAuthenticatedMember();
             return await _context.Friends
-                .Where(f => HasFriendsModPermissions(f, member))
+                .Where(f => HasModPermissions(f, member))
                 .Include(m => m.MemberFriend)
                 .Include(m => m.Member)
                 .Select(f => ToFriendResponse(f, member))
             .ToListAsync();
         }
 
-        private bool HasFriendsModPermissions(Friend f, Member m)
+        private bool HasModPermissions(Friend f, Member m)
         {
             // the user who modified the FriendStatus should always have the option to undo the change, or change it to something else again.
             // Example: member A blocks member B. Member B can't see member A in his friend list, but member A should still have the option to undo the block.
@@ -147,9 +147,6 @@ namespace strawpoll.Controllers
         public async Task<ActionResult<Friend>> PostFriend(FriendRequest request)
         {
             Member member = GetAuthenticatedMember();
-
-            if (request.MemberID != member.MemberID)
-                return NotFound();
 
             foreach (var email in request.FriendEmails)
             {
