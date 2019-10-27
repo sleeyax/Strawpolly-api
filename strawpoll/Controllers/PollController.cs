@@ -40,6 +40,7 @@ namespace strawpoll.Controllers
 
             var poll = _context.Polls
                 .Include(p => p.Answers)
+                .Include(p => p.Participants)
                 .FirstOrDefault(p => p.Creator == member && p.PollID == id);
 
             if (poll == null)
@@ -62,12 +63,14 @@ namespace strawpoll.Controllers
             Poll poll = _context.Polls
                 .Where(p => p.Creator.MemberID == member.MemberID)
                 .Include(p => p.Answers)
+                .Include(p => p.Participants)
                 .FirstOrDefault(p => p.PollID == request.PollID);
 
             if (poll == null) return NotFound();
 
             poll.Answers = request.Answers.Select(a => new PollAnswer() {Answer = a.Answer}).ToList();
             poll.Name = request.Name;
+            poll.Participants = request.participantIds.Select(pid => new PollParticipant{MemberID = pid}).ToList();
 
             _context.Entry(poll).State = EntityState.Modified;
 
