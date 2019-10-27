@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using strawpoll.Api.Requests;
+using strawpoll.Api.Responses;
 using strawpoll.Models;
 
 namespace strawpoll.Controllers
@@ -34,7 +35,7 @@ namespace strawpoll.Controllers
         // GET: api/polls/5
         [Authorize]
         [HttpGet("{id}")]
-        public async Task<ActionResult<Poll>> GetPoll(long id)
+        public async Task<ActionResult<PollResponse>> GetPoll(long id)
         {
             Member member = GetAuthenticatedMember();
 
@@ -45,9 +46,21 @@ namespace strawpoll.Controllers
 
             if (poll == null)
                 return NotFound();
-            
 
-            return poll;
+            return new PollResponse
+            {
+                PollID = poll.PollID,
+                Answers = poll.Answers.Select(a => a.Answer).ToList(),
+                Creator = new MemberResponse
+                {
+                    MemberID = poll.Creator.MemberID,
+                    Email = poll.Creator.Email,
+                    FirstName = poll.Creator.FirstName,
+                    LastName = poll.Creator.LastName
+                },
+                Name = poll.Name,
+                ParticipantIds = poll.Participants.Select(p => p.MemberID).ToList()
+            };
         }
 
         // PUT: api/polls/5
@@ -68,7 +81,7 @@ namespace strawpoll.Controllers
 
             if (poll == null) return NotFound();
 
-            poll.Answers = request.Answers.Select(a => new PollAnswer() {Answer = a.Answer}).ToList();
+            poll.Answers = request.Answers.Select(a => new PollAnswer {Answer = a}).ToList();
             poll.Name = request.Name;
             poll.Participants = request.participantIds.Select(pid => new PollParticipant{MemberID = pid}).ToList();
 
@@ -104,7 +117,7 @@ namespace strawpoll.Controllers
             {
                 Creator = member,
                 Answers = request.Answers
-                    .Select(a => new PollAnswer{Answer = a.Answer})
+                    .Select(a => new PollAnswer{Answer = a})
                     .ToList(),
                 Name = request.Name,
                 Participants = request.participantIds.Select(id => new PollParticipant {MemberID = id}).ToList()
