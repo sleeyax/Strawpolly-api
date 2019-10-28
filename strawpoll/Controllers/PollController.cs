@@ -22,13 +22,16 @@ namespace strawpoll.Controllers
         // GET: api/polls
         [Authorize]
         [HttpGet]
-        public async Task<IEnumerable<Poll>> GetMemberPolls()
+        public async Task<IEnumerable<PollResponse>> GetMemberPolls()
         {
             Member member = GetAuthenticatedMember();
 
             return await _context.Polls
                 .Where(p => p.Creator == member)
                 .Include(p => p.Answers)
+                .Include(p => p.Creator)
+                .Include(p => p.Participants).ThenInclude(part => part.Member)
+                .Select(p => ToPollResponse(p))
                 .ToListAsync();
         }
 
@@ -40,9 +43,11 @@ namespace strawpoll.Controllers
         {
             Member member = GetAuthenticatedMember();
 
+           // return _context.PollParticipants.Where(pp => pp.MemberID == member.MemberID).Include(pp => pp.Poll).Select(pp => ToPollResponse(pp));
+
             return await _context.Polls
-                .Include(p => p.Participants)
-                .Where(poll => poll.Participants.Select(p => p.MemberID).Contains(member.MemberID))
+                .Include(p => p.Participants).ThenInclude(part => part.Member)
+                .Where(poll => poll.Participants.Any(p => p.MemberID == member.MemberID))
                 .Include(p => p.Answers)
                 .Include(p => p.Creator)
                 .Select(p => ToPollResponse(p))
@@ -57,10 +62,10 @@ namespace strawpoll.Controllers
             Member member = GetAuthenticatedMember();
 
             var poll = _context.Polls
-                .Include(p => p.Participants)
+                .Include(p => p.Participants).ThenInclude(part => part.Member)
                 .Include(p => p.Answers)
                 .Include(p => p.Creator)
-                .FirstOrDefault(p => p.PollID == id && p.Participants.Select(part => part.MemberID).Contains(member.MemberID));
+                .FirstOrDefault(p => p.PollID == id && p.Participants.Any(part => part.MemberID == member.MemberID));
 
             if (poll == null)
                 return NotFound();
@@ -77,8 +82,8 @@ namespace strawpoll.Controllers
 
             var poll = _context.Polls
                 .Include(p => p.Answers)
-                .Include(p => p.Participants)
                 .Include(p => p.Creator)
+                .Include(p => p.Participants).ThenInclude(part => part.Member)
                 .FirstOrDefault(p => p.Creator == member && p.PollID == id);
 
             if (poll == null)
@@ -92,7 +97,7 @@ namespace strawpoll.Controllers
             return new PollResponse
             {
                 PollID = poll.PollID,
-                Answers = poll.Answers.Select(a => a.Answer).ToList(),
+                Answers = poll.Answers.Select(a => new AnswerResponse {Answer = a.Answer, AnswerID = a.PollAnswerID}).ToList(),
                 Creator = new MemberResponse
                 {
                     MemberID = poll.Creator.MemberID,
@@ -101,7 +106,17 @@ namespace strawpoll.Controllers
                     LastName = poll.Creator.LastName
                 },
                 Name = poll.Name,
-                ParticipantIds = poll.Participants.Select(p => p.MemberID).ToList()
+                Participants = poll.Participants.Select(p => new PollParticipantResponse
+                {
+                    PollParticipantID = p.PollParticipantID,
+                    Participant = new MemberResponse
+                    {
+                        Email = p.Member.Email,
+                        FirstName = p.Member.FirstName,
+                        LastName = p.Member.LastName,
+                        MemberID = p.Member.MemberID,
+                    }
+                }).ToList()
             };
         }
 
@@ -123,9 +138,10 @@ namespace strawpoll.Controllers
 
             if (poll == null) return NotFound();
 
-            poll.Answers = request.Answers.Select(a => new PollAnswer {Answer = a}).ToList();
+            // TODO: check if creating new object is actually securer
+            poll.Answers = request.Answers.Select(a => new PollAnswer {Answer = a.Answer}).ToList();
             poll.Name = request.Name;
-            poll.Participants = request.participantIds.Select(pid => new PollParticipant{MemberID = pid}).ToList();
+            poll.Participants = request.Participants.Select(p => new PollParticipant {MemberID = p.MemberID}).ToList();
 
             _context.Entry(poll).State = EntityState.Modified;
 
@@ -159,10 +175,10 @@ namespace strawpoll.Controllers
             {
                 Creator = member,
                 Answers = request.Answers
-                    .Select(a => new PollAnswer{Answer = a})
+                    .Select(a => new PollAnswer{Answer = a.Answer})
                     .ToList(),
                 Name = request.Name,
-                Participants = request.participantIds.Select(id => new PollParticipant {MemberID = id}).ToList()
+                Participants = request.Participants.Select(p => new PollParticipant() {MemberID = p.MemberID}).ToList()
             };
 
             _context.Polls.Add(poll);

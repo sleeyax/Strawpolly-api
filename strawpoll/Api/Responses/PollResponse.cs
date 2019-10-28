@@ -8,7 +8,7 @@ namespace strawpoll.Api.Responses
         public long PollID { get; set; }
         public string Name { get; set; }
         public MemberResponse Creator { get; set; }
-        public List<string> Answers { get; set; }
-        public List<long> ParticipantIds { get; set; }
+        public List<AnswerResponse> Answers { get; set; }
+        public List<PollParticipantResponse> Participants { get; set; }
     }
 }
