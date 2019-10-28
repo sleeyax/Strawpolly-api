@@ -32,6 +32,42 @@ namespace strawpoll.Controllers
                 .ToListAsync();
         }
 
+        // Returns all polls the current member is invited to
+        // GET: api/polls/open
+        [Authorize]
+        [HttpGet("open")]
+        public async Task<IEnumerable<PollResponse>> GetOpenPolls()
+        {
+            Member member = GetAuthenticatedMember();
+
+            return await _context.Polls
+                .Include(p => p.Participants)
+                .Where(poll => poll.Participants.Select(p => p.MemberID).Contains(member.MemberID))
+                .Include(p => p.Answers)
+                .Include(p => p.Creator)
+                .Select(p => ToPollResponse(p))
+                .ToListAsync();
+        }
+
+        // GET: api/polls/open/5
+        [Authorize]
+        [HttpGet("open/{id}")]
+        public async Task<ActionResult<PollResponse>> GetOpenPoll(long id)
+        {
+            Member member = GetAuthenticatedMember();
+
+            var poll = _context.Polls
+                .Include(p => p.Participants)
+                .Include(p => p.Answers)
+                .Include(p => p.Creator)
+                .FirstOrDefault(p => p.PollID == id && p.Participants.Select(part => part.MemberID).Contains(member.MemberID));
+
+            if (poll == null)
+                return NotFound();
+
+            return ToPollResponse(poll);
+        }
+
         // GET: api/polls/5
         [Authorize]
         [HttpGet("{id}")]
@@ -42,11 +78,17 @@ namespace strawpoll.Controllers
             var poll = _context.Polls
                 .Include(p => p.Answers)
                 .Include(p => p.Participants)
+                .Include(p => p.Creator)
                 .FirstOrDefault(p => p.Creator == member && p.PollID == id);
 
             if (poll == null)
                 return NotFound();
 
+            return ToPollResponse(poll);
+        }
+
+        private PollResponse ToPollResponse(Poll poll)
+        {
             return new PollResponse
             {
                 PollID = poll.PollID,
