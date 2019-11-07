@@ -48,7 +48,7 @@ namespace strawpoll.Controllers
             return await _context.Polls
                 .Include(p => p.Participants).ThenInclude(part => part.Member)
                 .Where(poll => poll.Participants.Any(p => p.MemberID == member.MemberID))
-                .Include(p => p.Answers)
+                .Include(p => p.Answers).ThenInclude(a => a.Votes)
                 .Include(p => p.Creator)
                 .Select(p => ToPollResponse(p))
                 .ToListAsync();
@@ -115,7 +115,8 @@ namespace strawpoll.Controllers
                         FirstName = p.Member.FirstName,
                         LastName = p.Member.LastName,
                         MemberID = p.Member.MemberID,
-                    }
+                    },
+                    HasAnswered = poll.Answers.Exists(x => x.Votes != null) && poll.Answers.Any(a => a.Votes.Any(v => v.MemberID == p.MemberID))
                 }).ToList()
             };
         }
