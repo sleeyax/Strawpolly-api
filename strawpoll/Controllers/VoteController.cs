@@ -17,7 +17,7 @@ namespace strawpoll.Controllers
         public VoteController(DatabaseContext context) : base(context) {}
 
         // GET: api/vote
-        [HttpGet]
+        /*[HttpGet]
         public async Task<ActionResult<IEnumerable<PollVote>>> GetPollVotes()
         {
             return await _context.PollVotes.ToListAsync();
@@ -35,34 +35,27 @@ namespace strawpoll.Controllers
             }
 
             return pollVote;
-        }
+        }*/
 
-        // PUT: api/vote/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutPollVote(long id, PollVote pollVote)
+        // PUT: api/vote
+        // update vote
+        [HttpPut]
+        public async Task<ActionResult<PollVote>> PutPollVote(VoteRequest request)
         {
-            if (id != pollVote.PollVoteID)
-            {
-                return BadRequest();
-            }
+            Member member = GetAuthenticatedMember();
 
+            if (!IsParticipant(request.PollID, member)) return NotFound();
+
+            // if for some reason the user hasn't voted yet, submit it as a new vote
+            if (!HasVoted(request.PollID, member)) return await PostPollVote(request);
+
+            // change answer
+            var pollVote = _context.PollVotes.FirstOrDefault(pv => pv.PollVoteID == request.VoteID && pv.MemberID == member.MemberID);
+            if (pollVote == null) return BadRequest("Invalid action for this user");
+            pollVote.PollAnswerID = request.AnswerID;
             _context.Entry(pollVote).State = EntityState.Modified;
 
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!PollVoteExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            await _context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -74,14 +67,10 @@ namespace strawpoll.Controllers
             Member member = GetAuthenticatedMember();
 
             // check if member is a participant of this poll
-            PollParticipant pollParticipant = _context.PollParticipants.FirstOrDefault(p => p.MemberID == member.MemberID && p.PollID == request.PollID);
-            if (pollParticipant == null) return NotFound();
+            if (!IsParticipant(request.PollID, member)) return NotFound();
 
             // check if member has already voted
-            var hasVoted = _context.PollAnswers
-                .Include(pa => pa.Votes)
-                .Any(pa => pa.PollID == request.PollID && pa.Votes.Any(v => v.MemberID == member.MemberID));
-            if (hasVoted) return BadRequest("Already voted!");
+            if (HasVoted(request.PollID, member)) return BadRequest("Already voted!");
 
             _context.PollVotes.Add(new PollVote
             {
@@ -113,6 +102,32 @@ namespace strawpoll.Controllers
         private bool PollVoteExists(long id)
         {
             return _context.PollVotes.Any(e => e.PollVoteID == id);
+        }
+
+        /// <summary>
+        /// check if member is a participant of a poll
+        /// </summary>
+        /// <param name="pollId"></param>
+        /// <param name="member"></param>
+        /// <returns></returns>
+        private bool IsParticipant(long pollId, Member member)
+        {
+            PollParticipant pollParticipant = _context.PollParticipants.FirstOrDefault(p => p.MemberID == member.MemberID && p.PollID == pollId);
+            return pollParticipant != null;
+        }
+
+        /// <summary>
+        /// verify if the member has voted on the poll
+        /// </summary>
+        /// <param name="pollId"></param>
+        /// <param name="member"></param>
+        /// <returns></returns>
+        private bool HasVoted(long pollId, Member member)
+        {
+            var hasVoted = _context.PollAnswers
+                .Include(pa => pa.Votes)
+                .Any(pa => pa.PollID == pollId && pa.Votes.Any(v => v.MemberID == member.MemberID));
+            return hasVoted;
         }
     }
 }

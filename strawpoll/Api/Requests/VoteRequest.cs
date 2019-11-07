@@ -4,5 +4,6 @@
     {
         public long PollID { get; set; }
         public long AnswerID { get; set; }
+        public long VoteID { get; set; }
     }
 }

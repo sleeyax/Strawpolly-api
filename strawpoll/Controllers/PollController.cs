@@ -39,19 +39,25 @@ namespace strawpoll.Controllers
         // GET: api/polls/open
         [Authorize]
         [HttpGet("open")]
-        public async Task<IEnumerable<PollResponse>> GetOpenPolls()
+        public async Task<List<PollResponse>> GetOpenPolls()
         {
             Member member = GetAuthenticatedMember();
 
            // return _context.PollParticipants.Where(pp => pp.MemberID == member.MemberID).Include(pp => pp.Poll).Select(pp => ToPollResponse(pp));
 
-            return await _context.Polls
+            var result = await _context.Polls
                 .Include(p => p.Participants).ThenInclude(part => part.Member)
                 .Where(poll => poll.Participants.Any(p => p.MemberID == member.MemberID))
                 .Include(p => p.Answers).ThenInclude(a => a.Votes)
                 .Include(p => p.Creator)
                 .Select(p => ToPollResponse(p))
                 .ToListAsync();
+
+            return result.Select(r =>
+            {
+                r.Vote = GetPollVote(r.PollID, member);
+                return r;
+            }).ToList();
         }
 
         // GET: api/polls/open/5
@@ -63,14 +69,30 @@ namespace strawpoll.Controllers
 
             var poll = _context.Polls
                 .Include(p => p.Participants).ThenInclude(part => part.Member)
-                .Include(p => p.Answers)
+                .Include(p => p.Answers).ThenInclude(a => a.Votes)
                 .Include(p => p.Creator)
                 .FirstOrDefault(p => p.PollID == id && p.Participants.Any(part => part.MemberID == member.MemberID));
 
             if (poll == null)
                 return NotFound();
 
-            return ToPollResponse(poll);
+            var response = ToPollResponse(poll);
+            response.Vote = GetPollVote(poll.PollID, member);
+
+            return response;
+        }
+
+        private VoteResponse GetPollVote(long pollId, Member member)
+        {
+            var pollVote = _context.PollVotes
+                .Include(pv => pv.Answer)
+                .FirstOrDefault(pv => pv.MemberID == member.MemberID && pv.Answer.PollID == pollId);
+
+            return pollVote != null ? new VoteResponse
+            {
+                VoteID = pollVote.PollVoteID,
+                AnswerID = pollVote.PollAnswerID
+            } : null;
         }
 
         // GET: api/polls/5
@@ -97,7 +119,11 @@ namespace strawpoll.Controllers
             return new PollResponse
             {
                 PollID = poll.PollID,
-                Answers = poll.Answers.Select(a => new AnswerResponse {Answer = a.Answer, AnswerID = a.PollAnswerID}).ToList(),
+                Answers = poll.Answers.Select(a => new AnswerResponse
+                {
+                    Answer = a.Answer,
+                    AnswerID = a.PollAnswerID
+                }).ToList(),
                 Creator = new MemberResponse
                 {
                     MemberID = poll.Creator.MemberID,
@@ -116,7 +142,6 @@ namespace strawpoll.Controllers
                         LastName = p.Member.LastName,
                         MemberID = p.Member.MemberID,
                     },
-                    HasAnswered = poll.Answers.Exists(x => x.Votes != null) && poll.Answers.Any(a => a.Votes.Any(v => v.MemberID == p.MemberID))
                 }).ToList()
             };
         }
