@@ -71,15 +71,17 @@ namespace strawpoll.Controllers
         [HttpPost]
         public async Task<ActionResult<PollVote>> PostPollVote(VoteRequest request)
         {
-            // TODO: check if already voted
-
             Member member = GetAuthenticatedMember();
 
-            PollParticipant pollParticipant = _context.PollParticipants
-                .FirstOrDefault(p => p.MemberID == member.MemberID && p.PollID == request.PollID);
+            // check if member is a participant of this poll
+            PollParticipant pollParticipant = _context.PollParticipants.FirstOrDefault(p => p.MemberID == member.MemberID && p.PollID == request.PollID);
+            if (pollParticipant == null) return NotFound();
 
-            if (pollParticipant == null)
-                return NotFound();
+            // check if member has already voted
+            var hasVoted = _context.PollAnswers
+                .Include(pa => pa.Votes)
+                .Any(pa => pa.PollID == request.PollID && pa.Votes.Any(v => v.MemberID == member.MemberID));
+            if (hasVoted) return BadRequest("Already voted!");
 
             _context.PollVotes.Add(new PollVote
             {
