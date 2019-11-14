@@ -48,6 +48,19 @@ namespace strawpoll.Controllers
             return member;
         }
 
+        // GET: api/members/key/abd4-889-xxx
+        // get member by CreationKey
+        [HttpGet("key/{creationKey}")]
+        public async Task<ActionResult<Member>> GetMemberByCreationKey(string creationKey)
+        {
+            var member = await _context.Members.FirstOrDefaultAsync(m => m.CreationKey == creationKey);
+
+            if (member == null)
+                return NotFound();
+
+            return member;
+        }
+
         // PUT: api/members/5
         [Authorize]
         [HttpPut("{id}")]
@@ -83,15 +96,32 @@ namespace strawpoll.Controllers
         [HttpPost]
         public async Task<ActionResult<Member>> PostMember(RegisterRequest request)
         {
-            Member member = new Member
-            {
-                Email = request.Email,
-                FirstName = request.FirstName,
-                LastName = request.LastName,
-                Password = request.Password
-            };
+            Member member;
 
-            _context.Members.Add(member);
+            // update using CreationKey
+            if (request.CreationKey != null)
+            {
+                member = _context.Members.FirstOrDefault(m => m.CreationKey == request.CreationKey);
+                if (member == null)
+                    return NotFound("Invalid creation key!");
+                member.CreationKey = null;
+            }
+            else
+            {
+                // add new member
+                member = new Member();
+            }
+            
+            member.Email = request.Email;
+            member.FirstName = request.FirstName;
+            member.LastName = request.LastName;
+            member.Password = request.Password;
+
+            if (request.CreationKey != null)
+                _context.Entry(member).State = EntityState.Modified;
+            else
+                _context.Members.Add(member);
+            
             await _context.SaveChangesAsync();
 
             return CreatedAtAction("GetMember", new { id = member.MemberID }, member);

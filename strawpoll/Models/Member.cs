@@ -18,6 +18,8 @@ namespace strawpoll.Models
         // NotMapped = field will not be stored as a column in the DB
         [NotMapped]
         public string Token { get; set; }
+        // unique key that was used to create this account
+        public string CreationKey { get; set; }
 
         public List<Poll> Polls { get; set; }
         public List<Friend> Friends { get; set; }

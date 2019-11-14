@@ -4,11 +4,16 @@ using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Hosting.Internal;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using strawpoll.Api.Requests;
 using strawpoll.Api.Responses;
+using strawpoll.Config;
+using strawpoll.Email;
+using strawpoll.Email.Clients;
 using strawpoll.Models;
 
 namespace strawpoll.Controllers
@@ -17,7 +22,15 @@ namespace strawpoll.Controllers
     [ApiController]
     public class FriendController : AuthController
     {
-        public FriendController(DatabaseContext context) : base(context) { }
+        private readonly IEmail _mailClient;
+        private AppSettings _appSettings;
+
+        public FriendController(IOptions<AppSettings> appSettings, DatabaseContext context) : base(context)
+        {
+            // TODO: check if the environment is production, then set it to SendGrid
+            _mailClient = new MailTrap(appSettings);
+            _appSettings = appSettings.Value;
+        }
 
         // GET: api/friends
         // Returns a list of this Member friends (incl. all FriendStatuses)
@@ -165,13 +178,33 @@ namespace strawpoll.Controllers
 
             foreach (var email in request.FriendEmails)
             {
+                // do not allow members to send themselves a FR
+                if (email == member.Email) continue;
+
                 Member friend = _context.Members.FirstOrDefault(m => m.Email == email);
+
+                // user with that email doesn't exist yet, add it to db and send link to email address to create account
                 if (friend == null)
                 {
-                    // TODO: send invitation email
-                    break;
+                    // create new account with this email
+                    friend = new Member
+                    {
+                        Email = email,
+                        CreationKey = Guid.NewGuid().ToString()
+                    };
+                    _context.Members.Add(friend);
+                    await _context.SaveChangesAsync();
+
+                    // send invitation email
+                    _mailClient.Send(
+                        "admin@strawpolly.com",
+                        email,
+                        "Strawpolly invitation link",
+                        $"Hello,\n\nPlease click the link below to create a Strawpolly account:\n\n{_appSettings.FrontEndUrl}/register/{friend.CreationKey}"
+                    );
                 }
-                // insert pending friend request into db if they are not friends yet
+
+                // insert pending friend request into db if they are not in the friends table yet
                 if (!AreFriends(member, friend))
                     _context.Friends.Add(new Friend
                     {
