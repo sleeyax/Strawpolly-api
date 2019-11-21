@@ -82,6 +82,37 @@ namespace strawpoll.Controllers
             return response;
         }
 
+        // GET: api/polls/results/5
+        // get poll results
+        [Authorize]
+        [HttpGet("results/{id}")]
+        public async Task<ActionResult<PollResponse>> GetPollResults(long id)
+        {
+            Member member = GetAuthenticatedMember();
+
+            var poll = _context.Polls
+                .Include(p => p.Participants).ThenInclude(part => part.Member)
+                .Include(p => p.Answers).ThenInclude(a => a.Votes)
+                .Include(p => p.Creator)
+                .FirstOrDefault(p => p.PollID == id && (p.Participants.Any(part => part.MemberID == member.MemberID) || p.Creator.MemberID == member.MemberID));
+
+            if (poll == null)
+                return NotFound();
+
+            var response = ToPollResponse(poll);
+            // include amount of votes for each answer
+            response.Answers = poll.Answers.Select(a => new AnswerResponse
+            {
+                Answer = a.Answer,
+                AnswerID = a.PollAnswerID,
+                Votes = a.Votes.Count
+            }).ToList();
+            // we don't need participants in the response
+            // response.Participants = null;
+
+            return response;
+        }
+
         private VoteResponse GetPollVote(long pollId, Member member)
         {
             var pollVote = _context.PollVotes
@@ -96,6 +127,7 @@ namespace strawpoll.Controllers
         }
 
         // GET: api/polls/5
+        // get poll that this member has created
         [Authorize]
         [HttpGet("{id}")]
         public async Task<ActionResult<PollResponse>> GetPoll(long id)
