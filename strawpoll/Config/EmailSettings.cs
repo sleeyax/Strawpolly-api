@@ -2,6 +2,7 @@
 {
     public class EmailSettings
     {
+        public string Enabled { get; set; }
         public EmailSetting MailTrap { get; set; }
         public EmailSetting SendGrid { get; set; }
     }

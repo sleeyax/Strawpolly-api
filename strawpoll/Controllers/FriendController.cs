@@ -28,7 +28,17 @@ namespace strawpoll.Controllers
         public FriendController(IOptions<AppSettings> appSettings, DatabaseContext context) : base(context)
         {
             // TODO: check if the environment is production, then set it to SendGrid
-            _mailClient = new MailTrap(appSettings);
+            switch (appSettings.Value.EmailSettings.Enabled.ToLower())
+            {
+                case "sendgrid":
+                    _mailClient = new SendGrid(appSettings);
+                    break;
+                case "mailtrap":
+                default:
+                    _mailClient = new MailTrap(appSettings);
+                    break;
+                
+            }
             _appSettings = appSettings.Value;
         }
 
