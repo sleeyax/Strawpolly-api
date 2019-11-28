@@ -24,7 +24,7 @@ namespace strawpoll.Services
 
         public Member Authenticate(string email, string password)
         {
-            var member = _databaseContext.Members.SingleOrDefault(x => x.Email == email && Hash.Validate(password, x.Salt, x.Password));
+            var member = _databaseContext.Members.SingleOrDefault(x => x.Email == email && x.Salt != null && Hash.Validate(password, x.Salt, x.Password));
 
             if (member == null)  return null;
 

@@ -52,7 +52,7 @@ namespace strawpoll.Controllers
         public async Task<ActionResult<MemberResponse>> PostMember(RegisterRequest request)
         {
             // check if member with that email address already exists
-            if (_context.Members.FirstOrDefault(m => m.Email == request.Email) != null)
+            if (_context.Members.Any(m => m.Email == request.Email && m.CreationKey == null))
                 return BadRequest("You already have an account using that email address!");
 
             Member member;

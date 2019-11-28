@@ -206,6 +206,8 @@ namespace strawpoll.Controllers
 
             foreach (var email in request.FriendEmails)
             {
+                if (string.IsNullOrEmpty(email)) return BadRequest("Invalid email value retrieved!");
+
                 // do not allow members to send themselves a FR
                 if (email == member.Email) continue;
 

@@ -257,6 +257,9 @@ namespace strawpoll.Controllers
         [HttpPost]
         public async Task<ActionResult> PostPoll(PollRequest request)
         {
+            if (request.Answers.Count == 0 || string.IsNullOrEmpty(request.Name))
+                return BadRequest("Some fields are left empty!");
+
             Member member = GetAuthenticatedMember();
 
             Poll poll = new Poll
