@@ -7,6 +7,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using strawpoll.Config;
 using strawpoll.Models;
+using strawpoll.Security;
 
 namespace strawpoll.Services
 {
@@ -23,7 +24,7 @@ namespace strawpoll.Services
 
         public Member Authenticate(string email, string password)
         {
-            var member = _databaseContext.Members.SingleOrDefault(x => x.Email == email && x.Password == password);
+            var member = _databaseContext.Members.SingleOrDefault(x => x.Email == email && Hash.Validate(password, x.Salt, x.Password));
 
             if (member == null)  return null;
 

@@ -1,4 +1,5 @@
 ﻿using System.Linq;
+using System.Security.Policy;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -6,6 +7,8 @@ using strawpoll.Api.Requests;
 using strawpoll.Api.Responses;
 using strawpoll.Models;
 using strawpoll.Services;
+using strawpoll.Security;
+using Hash = strawpoll.Security.Hash;
 
 namespace strawpoll.Controllers
 {
@@ -71,7 +74,8 @@ namespace strawpoll.Controllers
             member.Email = request.Email;
             member.FirstName = request.FirstName;
             member.LastName = request.LastName;
-            member.Password = request.Password;
+            member.Salt = Salt.Create();
+            member.Password = Hash.Create(request.Password, member.Salt);
 
             if (request.CreationKey != null)
                 _context.Entry(member).State = EntityState.Modified;
@@ -112,7 +116,7 @@ namespace strawpoll.Controllers
             var authenticatedMember = _memberService.Authenticate(request.Email, request.Password);
 
             if (authenticatedMember == null)
-                return BadRequest(new {message = "Invalid username or password!"});
+                return BadRequest("Invalid username or password!");
 
             return Ok(ToMemberResponse(authenticatedMember));
         }
