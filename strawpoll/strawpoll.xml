@@ -1,0 +1,65 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>strawpoll</name>
+    </assembly>
+    <members>
+        <member name="M:strawpoll.Controllers.AuthController.GetAuthenticatedMember">
+            <summary>
+            Returns the member that's currently authenticated with the API
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.MemberController.GetMemberByCreationKey(System.String)">
+            <summary>
+            get member email address by creation key
+            </summary>
+            <param name="creationKey">unique key (GUID)</param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.MemberController.PostMember(strawpoll.Api.Requests.RegisterRequest)">
+            <summary>
+            register account
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.MemberController.ToMemberResponse(strawpoll.Models.Member)">
+            <summary>
+            Converts an instance of Member to MemberResponse
+            </summary>
+            <param name="member"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.MemberController.AuthenticateMember(strawpoll.Api.Requests.LoginRequest)">
+            <summary>
+            log in
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.VoteController.IsParticipant(System.Int64,strawpoll.Models.Member)">
+            <summary>
+            check if member is a participant of a poll
+            </summary>
+            <param name="pollId"></param>
+            <param name="member"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.VoteController.HasVoted(System.Int64,strawpoll.Models.Member)">
+            <summary>
+            verify if the member has voted on the poll
+            </summary>
+            <param name="pollId"></param>
+            <param name="member"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.DbInitializer.Initialize(strawpoll.Models.DatabaseContext,System.Boolean)">
+            <summary>
+            Initializes the database and adds dummy data
+            </summary>
+            <param name="context">Database context</param>
+            <param name="reset">Set to true if you want to drop (delete) the whole database first</param>
+        </member>
+    </members>
+</doc>
