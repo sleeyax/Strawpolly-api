@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using strawpoll.Api.Requests;
+using strawpoll.Api.Responses;
 using strawpoll.Models;
 using strawpoll.Services;
 
@@ -25,76 +22,31 @@ namespace strawpoll.Controllers
             _memberService = memberService;
         }
 
-        // GET: api/members
-        [Authorize]
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Member>>> GetMembers()
-        {
-            return await _context.Members.ToListAsync();
-        }
-
-        // GET: api/members/5
-        [Authorize]
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Member>> GetMember(long id)
-        {
-            var member = await _context.Members.FindAsync(id);
-
-            if (member == null)
-            {
-                return NotFound();
-            }
-
-            return member;
-        }
-
+        /// <summary>
+        /// get member email address by creation key
+        /// </summary>
+        /// <param name="creationKey">unique key (GUID)</param>
+        /// <returns></returns>
         // GET: api/members/key/abd4-889-xxx
-        // get member by CreationKey
         [HttpGet("key/{creationKey}")]
-        public async Task<ActionResult<Member>> GetMemberByCreationKey(string creationKey)
+        public async Task<ActionResult<string>> GetMemberByCreationKey(string creationKey)
         {
             var member = await _context.Members.FirstOrDefaultAsync(m => m.CreationKey == creationKey);
 
             if (member == null)
-                return NotFound();
+                return NotFound("Invalid key!");
 
-            return member;
+            return member.Email;
         }
 
-        // PUT: api/members/5
-        [Authorize]
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutMember(long id, Member member)
-        {
-            if (id != member.MemberID)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(member).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!MemberExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent();
-        }
-
+        /// <summary>
+        /// register account
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // POST: api/members
         [HttpPost]
-        public async Task<ActionResult<Member>> PostMember(RegisterRequest request)
+        public async Task<ActionResult<MemberResponse>> PostMember(RegisterRequest request)
         {
             // check if member with that email address already exists
             if (_context.Members.FirstOrDefault(m => m.Email == request.Email) != null)
@@ -128,9 +80,31 @@ namespace strawpoll.Controllers
             
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetMember", new { id = member.MemberID }, member);
+            return Ok(ToMemberResponse(member));
         }
 
+        /// <summary>
+        /// Converts an instance of Member to MemberResponse
+        /// </summary>
+        /// <param name="member"></param>
+        /// <returns></returns>
+        private MemberResponse ToMemberResponse(Member member)
+        {
+            return new MemberResponse
+            {
+                MemberID = member.MemberID,
+                Email = member.Email,
+                FirstName = member.FirstName,
+                LastName = member.LastName,
+                Token = member.Token
+            };
+        }
+
+        /// <summary>
+        /// log in
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // POST: api/members/authenticate
         [HttpPost("authenticate")]
         public async Task<ActionResult<Member>> AuthenticateMember([FromBody] LoginRequest request)
@@ -140,29 +114,7 @@ namespace strawpoll.Controllers
             if (authenticatedMember == null)
                 return BadRequest(new {message = "Invalid username or password!"});
 
-            return Ok(authenticatedMember);
-        }
-
-        // DELETE: api/members/5
-        [Authorize]
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<Member>> DeleteMember(long id)
-        {
-            var member = await _context.Members.FindAsync(id);
-            if (member == null)
-            {
-                return NotFound();
-            }
-
-            _context.Members.Remove(member);
-            await _context.SaveChangesAsync();
-
-            return member;
-        }
-
-        private bool MemberExists(long id)
-        {
-            return _context.Members.Any(e => e.MemberID == id);
+            return Ok(ToMemberResponse(authenticatedMember));
         }
     }
 }

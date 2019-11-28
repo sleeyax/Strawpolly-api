@@ -16,29 +16,12 @@ namespace strawpoll.Controllers
     {
         public VoteController(DatabaseContext context) : base(context) {}
 
-        // GET: api/vote
-        /*[HttpGet]
-        public async Task<ActionResult<IEnumerable<PollVote>>> GetPollVotes()
-        {
-            return await _context.PollVotes.ToListAsync();
-        }
-
-        // GET: api/vote/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<PollVote>> GetPollVote(long id)
-        {
-            var pollVote = await _context.PollVotes.FindAsync(id);
-
-            if (pollVote == null)
-            {
-                return NotFound();
-            }
-
-            return pollVote;
-        }*/
-
+        /// <summary>
+        /// update vote
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // PUT: api/vote
-        // update vote
         [HttpPut]
         public async Task<ActionResult<PollVote>> PutPollVote(VoteRequest request)
         {
@@ -60,6 +43,11 @@ namespace strawpoll.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// submit vote
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // POST: api/vote
         [HttpPost]
         public async Task<ActionResult<PollVote>> PostPollVote(VoteRequest request)
@@ -81,27 +69,6 @@ namespace strawpoll.Controllers
             await _context.SaveChangesAsync();
 
             return Ok();
-        }
-
-        // DELETE: api/vote/5
-        [HttpDelete("{id}")]
-        public async Task<ActionResult<PollVote>> DeletePollVote(long id)
-        {
-            var pollVote = await _context.PollVotes.FindAsync(id);
-            if (pollVote == null)
-            {
-                return NotFound();
-            }
-
-            _context.PollVotes.Remove(pollVote);
-            await _context.SaveChangesAsync();
-
-            return pollVote;
-        }
-
-        private bool PollVoteExists(long id)
-        {
-            return _context.PollVotes.Any(e => e.PollVoteID == id);
         }
 
         /// <summary>

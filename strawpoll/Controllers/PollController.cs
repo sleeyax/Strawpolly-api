@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using strawpoll.Api.Requests;
@@ -18,7 +16,10 @@ namespace strawpoll.Controllers
     {
         public PollController(DatabaseContext context) : base(context) { }
 
-        // Returns all polls the current user has created
+        /// <summary>
+        /// list polls I have created
+        /// </summary>
+        /// <returns></returns>
         // GET: api/polls
         [Authorize]
         [HttpGet]
@@ -35,15 +36,16 @@ namespace strawpoll.Controllers
                 .ToListAsync();
         }
 
-        // Returns all polls the current member is invited to
+        /// <summary>
+        /// list polls I'm invited to
+        /// </summary>
+        /// <returns></returns>
         // GET: api/polls/open
         [Authorize]
         [HttpGet("open")]
         public async Task<List<PollResponse>> GetOpenPolls()
         {
             Member member = GetAuthenticatedMember();
-
-           // return _context.PollParticipants.Where(pp => pp.MemberID == member.MemberID).Include(pp => pp.Poll).Select(pp => ToPollResponse(pp));
 
             var result = await _context.Polls
                 .Include(p => p.Participants).ThenInclude(part => part.Member)
@@ -60,6 +62,11 @@ namespace strawpoll.Controllers
             }).ToList();
         }
 
+        /// <summary>
+        /// info about a poll I can participate in
+        /// </summary>
+        /// <param name="id">poll id</param>
+        /// <returns></returns>
         // GET: api/polls/open/5
         [Authorize]
         [HttpGet("open/{id}")]
@@ -82,8 +89,12 @@ namespace strawpoll.Controllers
             return response;
         }
 
+        /// <summary>
+        /// poll voting results
+        /// </summary>
+        /// <param name="id">poll id</param>
+        /// <returns></returns>
         // GET: api/polls/results/5
-        // get poll results
         [Authorize]
         [HttpGet("results/{id}")]
         public async Task<ActionResult<PollResponse>> GetPollResults(long id)
@@ -97,7 +108,7 @@ namespace strawpoll.Controllers
                 .FirstOrDefault(p => p.PollID == id && (p.Participants.Any(part => part.MemberID == member.MemberID) || p.Creator.MemberID == member.MemberID));
 
             if (poll == null)
-                return NotFound();
+                return PollNotFound();
 
             var response = ToPollResponse(poll);
             // include amount of votes for each answer
@@ -107,8 +118,6 @@ namespace strawpoll.Controllers
                 AnswerID = a.PollAnswerID,
                 Votes = a.Votes.Count
             }).ToList();
-            // we don't need participants in the response
-            // response.Participants = null;
 
             return response;
         }
@@ -126,8 +135,12 @@ namespace strawpoll.Controllers
             } : null;
         }
 
+        /// <summary>
+        /// info about poll that I have created
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         // GET: api/polls/5
-        // get poll that this member has created
         [Authorize]
         [HttpGet("{id}")]
         public async Task<ActionResult<PollResponse>> GetPoll(long id)
@@ -146,6 +159,11 @@ namespace strawpoll.Controllers
             return ToPollResponse(poll);
         }
 
+        /// <summary>
+        /// map Poll to PollResponse
+        /// </summary>
+        /// <param name="poll"></param>
+        /// <returns></returns>
         private PollResponse ToPollResponse(Poll poll)
         {
             return new PollResponse
@@ -178,13 +196,19 @@ namespace strawpoll.Controllers
             };
         }
 
+        /// <summary>
+        /// update poll
+        /// </summary>
+        /// <param name="id">poll id</param>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // PUT: api/polls/5
         [Authorize]
         [HttpPut("{id}")]
         public async Task<IActionResult> PutPoll(long id, PollRequest request)
         {
             if (id != request.PollID)
-                return BadRequest( id + " " + request.PollID);
+                return BadRequest();
 
             Member member = GetAuthenticatedMember();
 
@@ -194,7 +218,8 @@ namespace strawpoll.Controllers
                 .Include(p => p.Participants)
                 .FirstOrDefault(p => p.PollID == request.PollID);
 
-            if (poll == null) return NotFound();
+            // poll doesn't exist or member has no permission to edit
+            if (poll == null) return PollNotFound();
 
             // TODO: check if creating new object is actually securer
             poll.Answers = request.Answers.Select(a => new PollAnswer {Answer = a.Answer}).ToList();
@@ -222,6 +247,11 @@ namespace strawpoll.Controllers
             return Ok(poll);
         }
 
+        /// <summary>
+        /// create poll
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // POST: api/polls
         [Authorize]
         [HttpPost]
@@ -242,9 +272,14 @@ namespace strawpoll.Controllers
             _context.Polls.Add(poll);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetPoll", new { id = poll.PollID }, poll);
+            return Ok(poll);
         }
 
+        /// <summary>
+        /// delete poll
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
         // DELETE: api/poll/5
         [Authorize]
         [HttpDelete("{id}")]
@@ -254,21 +289,20 @@ namespace strawpoll.Controllers
 
             var poll = await _context.Polls.FindAsync(id);
             if (poll == null)
-                return NotFound();
+                return PollNotFound();
 
             // check if the member is allowed to delete this poll
             if (member.MemberID != poll.Creator.MemberID)
-                return Unauthorized();
+                return PollNotFound(); // NOTE: we do not use Unauthorized() here, because in that case the client will think the token is invalid
 
             _context.Polls.Remove(poll);
             await _context.SaveChangesAsync();
 
-            return poll;
+            return Ok();
         }
 
-        private bool PollExists(long id)
-        {
-            return _context.Polls.Any(e => e.PollID == id);
-        }
+        private bool PollExists(long id) => _context.Polls.Any(e => e.PollID == id);
+
+        private NotFoundObjectResult PollNotFound() => NotFound("Poll not found!");
     }
 }

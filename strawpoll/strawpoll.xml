@@ -4,10 +4,83 @@
         <name>strawpoll</name>
     </assembly>
     <members>
+        <member name="T:strawpoll.Controllers.AuthController">
+            <summary>
+            Base class that should be inherited by other classes that require member authentication
+            </summary>
+        </member>
         <member name="M:strawpoll.Controllers.AuthController.GetAuthenticatedMember">
             <summary>
             Returns the member that's currently authenticated with the API
             </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.GetFriends">
+            <summary>
+             list friends (all friend statuses)
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.HasModPermissions(strawpoll.Models.Friend,strawpoll.Models.Member)">
+            <summary>
+            Check if the authenticated member can modify the FriendStatus
+            </summary>
+            <remarks>
+            the user who modified the FriendStatus should always have the option to undo the change, or change it to something else again.
+            Example: member A blocks member B. Member B can't see member A in his friend list, but member A should still have the option to undo the block.
+            </remarks>
+            <param name="f"></param>
+            <param name="m"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.ToFriendResponse(strawpoll.Models.Friend,strawpoll.Models.Member)">
+            <summary>
+            Map Friend and Member instances to FriendResponse
+            </summary>
+            <param name="f"></param>
+            <param name="m"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.GetFriendRequests">
+            <summary>
+            list of members that have sent me a FR
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.GetAcceptedFriendRequests">
+            <summary>
+            list of my accepted friends
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.PutFriend(System.Int64,strawpoll.Api.Requests.FriendStatusUpdateRequest)">
+            <summary>
+            update friend status of incoming FR
+            </summary>
+            <param name="id">member id of friend</param>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.PostFriend(strawpoll.Api.Requests.FriendRequest)">
+            <summary>
+            send new FR
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.DeleteFriend(System.Int64)">
+            <summary>
+            remove friend
+            </summary>
+            <param name="id">member id of friend</param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.FriendController.AreFriends(strawpoll.Models.Member,strawpoll.Models.Member)">
+            <summary>
+            verify if specified members are friends 
+            </summary>
+            <param name="member"></param>
+            <param name="friend"></param>
             <returns></returns>
         </member>
         <member name="M:strawpoll.Controllers.MemberController.GetMemberByCreationKey(System.String)">
@@ -34,6 +107,88 @@
         <member name="M:strawpoll.Controllers.MemberController.AuthenticateMember(strawpoll.Api.Requests.LoginRequest)">
             <summary>
             log in
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.GetMemberPolls">
+            <summary>
+            list polls I have created
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.GetOpenPolls">
+            <summary>
+            list polls I'm invited to
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.GetOpenPoll(System.Int64)">
+            <summary>
+            info about a poll I can participate in
+            </summary>
+            <param name="id">poll id</param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.GetPollResults(System.Int64)">
+            <summary>
+            poll voting results
+            </summary>
+            <param name="id">poll id</param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.GetPoll(System.Int64)">
+            <summary>
+            info about poll that I have created
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.ToPollResponse(strawpoll.Models.Poll)">
+            <summary>
+            map Poll to PollResponse
+            </summary>
+            <param name="poll"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.PutPoll(System.Int64,strawpoll.Api.Requests.PollRequest)">
+            <summary>
+            update poll
+            </summary>
+            <param name="id">poll id</param>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.PostPoll(strawpoll.Api.Requests.PollRequest)">
+            <summary>
+            create poll
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.PollController.DeletePoll(System.Int64)">
+            <summary>
+            delete poll
+            </summary>
+            <param name="id"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.StatsController.GetStats">
+            <summary>
+            retrieve statistics about the application
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.VoteController.PutPollVote(strawpoll.Api.Requests.VoteRequest)">
+            <summary>
+            update vote
+            </summary>
+            <param name="request"></param>
+            <returns></returns>
+        </member>
+        <member name="M:strawpoll.Controllers.VoteController.PostPollVote(strawpoll.Api.Requests.VoteRequest)">
+            <summary>
+            submit vote
             </summary>
             <param name="request"></param>
             <returns></returns>

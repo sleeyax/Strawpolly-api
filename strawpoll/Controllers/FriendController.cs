@@ -1,11 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Hosting.Internal;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -27,7 +24,7 @@ namespace strawpoll.Controllers
 
         public FriendController(IOptions<AppSettings> appSettings, DatabaseContext context) : base(context)
         {
-            // TODO: check if the environment is production, then set it to SendGrid
+            // configure mail client based on email configuration settings in appsettings.json
             switch (appSettings.Value.EmailSettings.Enabled.ToLower())
             {
                 case "sendgrid":
@@ -42,8 +39,11 @@ namespace strawpoll.Controllers
             _appSettings = appSettings.Value;
         }
 
+        /// <summary>
+        ///  list friends (all friend statuses)
+        /// </summary>
+        /// <returns></returns>
         // GET: api/friends
-        // Returns a list of this Member friends (incl. all FriendStatuses)
         [HttpGet]
         [Authorize]
         public async Task<ActionResult<IEnumerable<FriendResponse>>> GetFriends()
@@ -57,6 +57,16 @@ namespace strawpoll.Controllers
             .ToListAsync();
         }
 
+        /// <summary>
+        /// Check if the authenticated member can modify the FriendStatus
+        /// </summary>
+        /// <remarks>
+        /// the user who modified the FriendStatus should always have the option to undo the change, or change it to something else again.
+        /// Example: member A blocks member B. Member B can't see member A in his friend list, but member A should still have the option to undo the block.
+        /// </remarks>
+        /// <param name="f"></param>
+        /// <param name="m"></param>
+        /// <returns></returns>
         private bool HasModPermissions(Friend f, Member m)
         {
             // the user who modified the FriendStatus should always have the option to undo the change, or change it to something else again.
@@ -85,6 +95,12 @@ namespace strawpoll.Controllers
             return false;
         }
 
+        /// <summary>
+        /// Map Friend and Member instances to FriendResponse
+        /// </summary>
+        /// <param name="f"></param>
+        /// <param name="m"></param>
+        /// <returns></returns>
         private FriendResponse ToFriendResponse(Friend f, Member m)
         {
             Member friend = f.MemberID == m.MemberID ? f.MemberFriend : f.Member;
@@ -103,8 +119,11 @@ namespace strawpoll.Controllers
             };
         }
 
+        /// <summary>
+        /// list of members that have sent me a FR
+        /// </summary>
+        /// <returns></returns>
         // GET: api/friends/requests
-        // Returns a list of members that have sent the current user a friend request
         [HttpGet("requests")]
         [Authorize]
         public async Task<ActionResult<IEnumerable<FriendResponse>>> GetFriendRequests()
@@ -117,6 +136,10 @@ namespace strawpoll.Controllers
                 .ToListAsync();
         }
 
+        /// <summary>
+        /// list of my accepted friends
+        /// </summary>
+        /// <returns></returns>
         // GET: api/friends/accepted
         [HttpGet("accepted")]
         [Authorize]
@@ -131,22 +154,13 @@ namespace strawpoll.Controllers
                 .ToListAsync();
         }
 
-        // GET: api/friends/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Friend>> GetFriend(long id)
-        {
-            var friend = await _context.Friends.FindAsync(id);
-
-            if (friend == null)
-            {
-                return NotFound();
-            }
-
-            return friend;
-        }
-
+        /// <summary>
+        /// update friend status of incoming FR
+        /// </summary>
+        /// <param name="id">member id of friend</param>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // PUT: api/friends/5
-        // update friend status (accept, decline, ...) for incoming FR
         [HttpPut("{id}")]
         public async Task<IActionResult> PutFriend(long id, FriendStatusUpdateRequest request)
         {
@@ -179,8 +193,12 @@ namespace strawpoll.Controllers
             return NoContent();
         }
 
+        /// <summary>
+        /// send new FR
+        /// </summary>
+        /// <param name="request"></param>
+        /// <returns></returns>
         // POST: api/friends
-        // sends a new friend request
         [HttpPost]
         public async Task<ActionResult<Friend>> PostFriend(FriendRequest request)
         {
@@ -227,12 +245,15 @@ namespace strawpoll.Controllers
 
             await _context.SaveChangesAsync();
 
-            // return CreatedAtAction("GetFriend", new { id = friend.FriendID }, friend);
             return Ok();
         }
 
+        /// <summary>
+        /// remove friend
+        /// </summary>
+        /// <param name="id">member id of friend</param>
+        /// <returns></returns>
         // DELETE: api/friends/5
-        // remove friend
         [HttpDelete("{id}")]
         public async Task<ActionResult<Friend>> DeleteFriend(long id)
         {
@@ -250,6 +271,12 @@ namespace strawpoll.Controllers
             return friend;
         }
 
+        /// <summary>
+        /// verify if specified members are friends 
+        /// </summary>
+        /// <param name="member"></param>
+        /// <param name="friend"></param>
+        /// <returns></returns>
         private bool AreFriends(Member member, Member friend)
         {
             return _context.Friends.Any(f => 

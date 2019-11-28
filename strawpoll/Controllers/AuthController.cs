@@ -1,10 +1,12 @@
 ﻿using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using strawpoll.Models;
-using strawpoll.Services;
 
 namespace strawpoll.Controllers
 {
+    /// <summary>
+    /// Base class that should be inherited by other classes that require member authentication
+    /// </summary>
     public abstract class AuthController : ControllerBase
     {
         protected readonly DatabaseContext _context;

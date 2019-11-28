@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
+﻿using System.Linq;
 using Microsoft.AspNetCore.Mvc;
 using strawpoll.Api.Responses;
 using strawpoll.Models;
@@ -19,6 +15,10 @@ namespace strawpoll.Controllers
             _context = context;
         }
 
+        /// <summary>
+        /// retrieve statistics about the application
+        /// </summary>
+        /// <returns></returns>
         // GET: api/stats
         [HttpGet]
         public StatsResponse GetStats()
